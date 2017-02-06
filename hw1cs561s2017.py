@@ -1,109 +1,146 @@
 from decimal import Decimal
 from copy import deepcopy
 
-def readFile(filepath):
-    file = open(filepath)
-    player = file.readline().strip('\r\n')
-    depth = int(file.readline().strip('\r\n'))
-    board = list()
-    for line in file:
-        line = line.strip('\r\n')
-        row = list()
-        for c in line:
-            row.append(c)
-        board.append(row)
-    return player, depth, board
+class AlphaBetaPruning(object):
+    traverse_log = list()
 
-def findmax(board, depth, max_depth, player, alpha, beta, parent):
-    opponent = 'O' if player == 'X' else 'X'
-    if depth > max_depth:
-        value = calvalue(board, player)
-        # print str(column_name[parent[1]]) + str(row_name[parent[0]]), depth - 1, value, alpha, beta
+    def readFile(self, filepath):
+        file = open(filepath)
+        player = file.readline().strip('\r\n')
+        depth = int(file.readline().strip('\r\n'))
+        board = list()
+        for line in file:
+            line = line.strip('\r\n')
+            row = list()
+            for c in line:
+                row.append(c)
+            board.append(row)
+        return player, depth, board
+
+    def appendlog(self, pos, depth, v, alpha, beta):
+        if pos is None and depth != 0:
+            self.traverse_log.append('pass,%s,%s,%s,%s' % (depth, v, alpha, beta))
+        elif depth == 0:
+            self.traverse_log.append('root,0,%s,%s,%s' % (v, alpha, beta))
+        else:
+            self.traverse_log.append('%s%s,%s,%s,%s,%s' % (column_name[pos[1]], row_name[pos[0]], depth, v, alpha, beta))
+
+    def findmax(self, board, depth, max_depth, player, alpha, beta, parent):
+        opponent = 'O' if player == 'X' else 'X'
+        if depth > max_depth:
+            value = self.calvalue(board, player)
+            self.appendlog(parent, depth - 1, value, alpha, beta)
+            return value
+        valid_pos = self.getvalidaction(board, player)
+        v = Decimal("-Infinity")
+        best_move = None
+        if len(valid_pos) != 0:
+            for pos in valid_pos:
+                copy = deepcopy(board)
+                copy[pos[0]][pos[1]] = player
+                self.turncell(copy, pos, opponent, player)
+                self.appendlog(parent, depth - 1, v, alpha, beta)
+                #self.appendlog(pos, depth, v, alpha, beta)
+                temp = self.findmin(copy, depth + 1, max_depth, player, alpha, beta, pos)
+                if temp > v:
+                    v = temp
+                    best_move = pos
+                if v >= beta:
+                    return v, best_move
+
+                alpha = max(alpha, v)
+            self.appendlog(parent, depth - 1, v, alpha, beta)
+                #self.appendlog(parent, depth - 1, v, alpha, beta)
+        else:
+            self.appendlog(None, depth, v, alpha, beta)
+            temp = self.findmin(board, depth + 1, max_depth, player, alpha, beta, (9, 9))
+            if temp > v:
+                v = temp
+            if v >= beta:
+                return v, best_move
+            alpha = max(alpha, v)
+        return v, best_move
+
+
+    def findmin(self, board, depth, max_depth, player, alpha, beta, parent):
+        opponent = 'O' if player == 'X' else 'X'
+        if depth > max_depth:
+            value = self.calvalue(board, player)
+            self.appendlog(parent, depth - 1, value, alpha, beta)
+            return value
+        valid_pos = self.getvalidaction(board, opponent)
+        v = Decimal("Infinity")
+        if len(valid_pos) != 0:
+            for pos in valid_pos:
+                self.appendlog(parent, depth - 1, v, alpha, beta)
+                copy = deepcopy(board)
+                copy[pos[0]][pos[1]] = opponent
+                self.turncell(copy, pos, player, opponent)
+                v = min(v, self.findmax(copy, depth + 1, max_depth, player, alpha, beta, pos))
+                if v <= alpha:
+                    return v
+                beta = min(beta, v)
+            self.appendlog(parent, depth - 1, v, alpha, beta)
+        else:
+            self.appendlog(None, depth, v, alpha, beta)
+            temp, junk = self.findmax(board, depth + 1, max_depth, player, alpha, beta, (9, 9))
+            v = min(v, temp)
+            if v <= alpha:
+                return v
+            beta = min(beta, v)
+        return v
+
+    def turncell(self, board, cur, turn_from, turn_to):
+        ori = cur
+        for direction in directions:
+            path = list()
+            cur = ori
+            while True:
+                next = [direction[0] + cur[0], direction[1] + cur[1]]
+                if next[0] < 0 or next[1] < 0 or next[0] >= len(board) or next[1] >= len(board[0]):
+                    break
+                if board[next[0]][next[1]] == blank:
+                    break
+                if board[next[0]][next[1]] == turn_to:
+                    for cell in path:
+                        board[cell[0]][cell[1]] = turn_to
+                path.append(next)
+                cur = next
+        return board
+
+    def getvalidaction(self, board, player):
+        valid_pos = list()
+        for i in range(0, len(board)):
+            for j in range(0, len(board[0])):
+                if board[i][j] == blank:
+
+                    for direction in directions:
+                        cur = [i, j]
+                        while True:
+                            next = [direction[0] + cur[0], direction[1] + cur[1]]
+                            if next[0] < 0 or next[1] < 0 or next[0] >= len(board) or next[1] >= len(board[0]):
+                                break
+                            if board[next[0]][next[1]] == player and cur == [i, j]:
+                                break
+                            if board[next[0]][next[1]] == blank:
+                                break
+                            if board[next[0]][next[1]] == player:
+                                valid_pos.append((i, j))
+                                break
+                            cur = next
+        return valid_pos
+
+    def calvalue(self, board, player):
+        value = 0
+        for i in range(0, len(board)):
+            for j in range(0, len(board[0])):
+                if board[i][j] == '*':
+                    pass
+                elif board[i][j] == player:
+                    value += weights[i][j]
+                else:
+                    value -= weights[i][j]
         return value
-    valid_pos = getvalidaction(board, player)
-    v = Decimal("-Infinity")
-    for pos in valid_pos:
-        print str(column_name[pos[1]]) + str(row_name[pos[0]]), depth, v, alpha, beta
-        copy = deepcopy(board)
-        copy[pos[0]][pos[1]] = player
-        turncell(copy, pos, opponent, player)
-        v = max(v, findmin(copy, depth + 1, max_depth, player, alpha, beta, pos))
-        if v >= beta:
-            return v
-        alpha = max(alpha, v)
-    return v
-
-def findmin(board, depth, max_depth, player, alpha, beta, parent):
-    opponent = 'O' if player == 'X' else 'X'
-    if depth > max_depth:
-        value = calvalue(board, player)
-        print str(column_name[parent[1]]) + str(row_name[parent[0]]), depth - 1, value, alpha, beta
-        return value
-    valid_pos = getvalidaction(board, opponent)
-    v = Decimal("Infinity")
-    for pos in valid_pos:
-        print str(column_name[pos[1]]) + str(row_name[pos[0]]), depth, v, alpha, beta
-        copy = deepcopy(board)
-        copy[pos[0]][pos[1]] = opponent
-        turncell(copy, pos, player, opponent)
-        v = min(v, findmax(copy, depth + 1, max_depth, player, alpha, beta, pos))
-        if v <= alpha:
-            return v
-        beta = min(beta, v)
-    return v
-
-def turncell(board, cur, turn_from, turn_to):
-    ori = cur
-    for direction in directions:
-        path = list()
-        cur = ori
-        while True:
-            next = [direction[0] + cur[0], direction[1] + cur[1]]
-            if next[0] < 0 or next[1] < 0 or next[0] >= len(board) or next[1] >= len(board[0]):
-                break
-            if board[next[0]][next[1]] == blank:
-                break
-            if board[next[0]][next[1]] == turn_to:
-                for cell in path:
-                    board[cell[0]][cell[1]] = turn_to
-            path.append(next)
-            cur = next
-
-
-def getvalidaction(board, player):
-    valid_pos = list()
-    for i in range(0, len(board)):
-        for j in range(0, len(board[0])):
-            if board[i][j] == blank:
-
-                for direction in directions:
-                    cur = [i, j]
-                    while True:
-                        next = [direction[0] + cur[0], direction[1] + cur[1]]
-                        if next[0] < 0 or next[1] < 0 or next[0] >= len(board) or next[1] >= len(board[0]):
-                            break
-                        if board[next[0]][next[1]] == player and cur == [i, j]:
-                            break
-                        if board[next[0]][next[1]] == blank:
-                            break
-                        if board[next[0]][next[1]] == player:
-                            valid_pos.append((i, j))
-                            break
-                        cur = next
-
-    return valid_pos
-
-def calvalue(board, player):
-    value = 0
-    for i in range(0, len(board)):
-        for j in range(0, len(board[0])):
-            if board[i][j] == '*':
-                pass
-            elif board[i][j] == player:
-                value += weights[i][j]
-            else:
-                value -= weights[i][j]
-    return value
 
 
 weights = ((99, -8, 8, 6, 6, 8, -8, 99),
@@ -115,9 +152,13 @@ weights = ((99, -8, 8, 6, 6, 8, -8, 99),
            (-8, -24, -4, -3, -3, -4, -24, -8),
            (99, -8, 8, 6, 6, 8, -8, 99))
 
-row_name = (1, 2, 3, 4, 5, 6, 7, 8)
-column_name = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h')
+alphabeta = AlphaBetaPruning()
+row_name = (1, 2, 3, 4, 5, 6, 7, 8, '', '')
+column_name = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'root', 'pass')
 directions = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 blank = '*'
-player, depth, board = readFile("input.txt")
-findmax(board, 1, depth, player, Decimal("-Infinity"), Decimal("Infinity"), None)
+player, depth, board = alphabeta.readFile("input.txt")
+#alphabeta.appendlog(None, 0, Decimal("-Infinity"), Decimal("-Infinity"), Decimal("Infinity"))
+v, bm = alphabeta.findmax(board, 1, depth, player, Decimal("-Infinity"), Decimal("Infinity"), (8, 8))
+for log in alphabeta.traverse_log:
+    print log
