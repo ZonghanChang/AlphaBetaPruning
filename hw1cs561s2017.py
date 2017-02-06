@@ -27,71 +27,85 @@ class AlphaBetaPruning(object):
 
     def findmax(self, board, depth, max_depth, player, alpha, beta, parent):
         opponent = 'O' if player == 'X' else 'X'
+        best_move = None
+        valid_pos = self.getvalidaction(board, player)
         if depth > max_depth:
             value = self.calvalue(board, player)
             self.appendlog(parent, depth - 1, value, alpha, beta)
-            return value
-        valid_pos = self.getvalidaction(board, player)
+            return value, best_move
+
         v = Decimal("-Infinity")
-        best_move = None
+
         if len(valid_pos) != 0:
             for pos in valid_pos:
                 copy = deepcopy(board)
-                copy[pos[0]][pos[1]] = player
-                self.turncell(copy, pos, opponent, player)
+                self.turncell(copy, pos, player)
                 self.appendlog(parent, depth - 1, v, alpha, beta)
-                #self.appendlog(pos, depth, v, alpha, beta)
                 temp = self.findmin(copy, depth + 1, max_depth, player, alpha, beta, pos)
                 if temp > v:
                     v = temp
                     best_move = pos
                 if v >= beta:
+                    self.appendlog(parent, depth - 1, v, alpha, beta)
                     return v, best_move
-
                 alpha = max(alpha, v)
-            self.appendlog(parent, depth - 1, v, alpha, beta)
-                #self.appendlog(parent, depth - 1, v, alpha, beta)
         else:
-            self.appendlog(None, depth, v, alpha, beta)
-            temp = self.findmin(board, depth + 1, max_depth, player, alpha, beta, (9, 9))
+            self.appendlog(parent, depth - 1, v, alpha, beta)
+            temp = Decimal("-Infinity")
+            if parent is None:
+                temp = self.findmin(board, depth + 1, Decimal("-Infinity"), player, alpha, beta, None)
+            else:
+                temp = self.findmin(board, depth + 1, max_depth, player, alpha, beta, None)
             if temp > v:
                 v = temp
             if v >= beta:
+                self.appendlog(parent, depth - 1, v, alpha, beta)
                 return v, best_move
             alpha = max(alpha, v)
+        self.appendlog(parent, depth - 1, v, alpha, beta)
         return v, best_move
 
 
     def findmin(self, board, depth, max_depth, player, alpha, beta, parent):
         opponent = 'O' if player == 'X' else 'X'
+        valid_pos = self.getvalidaction(board, opponent)
         if depth > max_depth:
             value = self.calvalue(board, player)
             self.appendlog(parent, depth - 1, value, alpha, beta)
             return value
-        valid_pos = self.getvalidaction(board, opponent)
+
         v = Decimal("Infinity")
         if len(valid_pos) != 0:
             for pos in valid_pos:
-                self.appendlog(parent, depth - 1, v, alpha, beta)
                 copy = deepcopy(board)
-                copy[pos[0]][pos[1]] = opponent
-                self.turncell(copy, pos, player, opponent)
-                v = min(v, self.findmax(copy, depth + 1, max_depth, player, alpha, beta, pos))
+                self.turncell(copy, pos, opponent)
+                self.appendlog(parent, depth - 1, v, alpha, beta)
+                temp, junk = self.findmax(copy, depth + 1, max_depth, player, alpha, beta, pos)
+                v = min(v, temp)
                 if v <= alpha:
+                    self.appendlog(parent, depth - 1, v, alpha, beta)
                     return v
                 beta = min(beta, v)
-            self.appendlog(parent, depth - 1, v, alpha, beta)
+            #self.appendlog(parent, depth - 1, v, alpha, beta)
         else:
-            self.appendlog(None, depth, v, alpha, beta)
-            temp, junk = self.findmax(board, depth + 1, max_depth, player, alpha, beta, (9, 9))
+            self.appendlog(parent, depth - 1, v, alpha, beta)
+            temp = Decimal("Infinity")
+            if parent is None:
+                temp, junk = self.findmax(board, depth + 1, Decimal("-Infinity"), player, alpha, beta, None)
+            else:
+                temp, junk = self.findmax(board, depth + 1, max_depth, player, alpha, beta, None)
             v = min(v, temp)
+
             if v <= alpha:
+                self.appendlog(parent, depth - 1, v, alpha, beta)
                 return v
             beta = min(beta, v)
+        self.appendlog(parent, depth - 1, v, alpha, beta)
         return v
 
-    def turncell(self, board, cur, turn_from, turn_to):
+    def turncell(self, board, cur, turn_to):
         ori = cur
+        board[ori[0]][ori[1]] = turn_to
         for direction in directions:
             path = list()
             cur = ori
@@ -158,7 +172,15 @@ column_name = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'root', 'pass')
 directions = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 blank = '*'
 player, depth, board = alphabeta.readFile("input.txt")
-#alphabeta.appendlog(None, 0, Decimal("-Infinity"), Decimal("-Infinity"), Decimal("Infinity"))
-v, bm = alphabeta.findmax(board, 1, depth, player, Decimal("-Infinity"), Decimal("Infinity"), (8, 8))
+v, best_move = alphabeta.findmax(board, 1, depth, player, Decimal("-Infinity"), Decimal("Infinity"), (8, 8))
+if best_move is not None:
+    board = alphabeta.turncell(board, best_move, player)
+outfile = open('output.txt', 'w')
+for line in board:
+    for c in line:
+        outfile.write(c)
+    outfile.write('\n')
+outfile.write('Node,Depth,Value,Alpha,Beta\n')
 for log in alphabeta.traverse_log:
-    print log
+    outfile.write(log)
+    outfile.write('\n')
