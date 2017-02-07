@@ -178,9 +178,7 @@ row_name = (1, 2, 3, 4, 5, 6, 7, 8, '', '')
 column_name = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'root', 'pass')
 directions = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 blank = '*'
-player, depth, board = alphabeta.readFile("input0.txt")
-# alphabeta.turncell(board, (3,1), player)
-
+player, depth, board = alphabeta.readFile("input.txt")
 
 v, best_move = alphabeta.findmax(board, 1, depth, player, Decimal("-Infinity"), Decimal("Infinity"), (8, 8))
 if best_move is not None:
@@ -191,6 +189,7 @@ for line in board:
         outfile.write(c)
     outfile.write('\n')
 outfile.write('Node,Depth,Value,Alpha,Beta\n')
-for log in alphabeta.traverse_log:
+for log in alphabeta.traverse_log[0: -1]:
     outfile.write(log)
     outfile.write('\n')
+outfile.write(alphabeta.traverse_log[-1])
