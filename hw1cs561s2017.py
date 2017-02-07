@@ -128,6 +128,7 @@ class AlphaBetaPruning(object):
 
     def getvalidaction(self, board, player):
         valid_pos = list()
+        visited = set()
         for i in range(0, len(board)):
             for j in range(0, len(board[0])):
                 if board[i][j] == blank:
@@ -142,7 +143,10 @@ class AlphaBetaPruning(object):
                             if board[next[0]][next[1]] == blank:
                                 break
                             if board[next[0]][next[1]] == player:
+                                if (i, j) in visited:
+                                    break
                                 valid_pos.append((i, j))
+                                visited.add((i, j))
                                 break
                             cur = next
         return valid_pos
