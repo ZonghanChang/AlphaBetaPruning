@@ -1,5 +1,8 @@
+#!/usr/bin/env python
+
 from decimal import Decimal
 from copy import deepcopy
+
 
 class AlphaBetaPruning(object):
     traverse_log = list()
@@ -86,7 +89,7 @@ class AlphaBetaPruning(object):
                     self.appendlog(parent, depth - 1, v, alpha, beta)
                     return v
                 beta = min(beta, v)
-            #self.appendlog(parent, depth - 1, v, alpha, beta)
+
         else:
             self.appendlog(parent, depth - 1, v, alpha, beta)
             temp = Decimal("Infinity")
@@ -118,6 +121,7 @@ class AlphaBetaPruning(object):
                 if board[next[0]][next[1]] == turn_to:
                     for cell in path:
                         board[cell[0]][cell[1]] = turn_to
+                    break
                 path.append(next)
                 cur = next
         return board
@@ -127,7 +131,6 @@ class AlphaBetaPruning(object):
         for i in range(0, len(board)):
             for j in range(0, len(board[0])):
                 if board[i][j] == blank:
-
                     for direction in directions:
                         cur = [i, j]
                         while True:
@@ -171,7 +174,10 @@ row_name = (1, 2, 3, 4, 5, 6, 7, 8, '', '')
 column_name = ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'root', 'pass')
 directions = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
 blank = '*'
-player, depth, board = alphabeta.readFile("input.txt")
+player, depth, board = alphabeta.readFile("input0.txt")
+# alphabeta.turncell(board, (3,1), player)
+
+
 v, best_move = alphabeta.findmax(board, 1, depth, player, Decimal("-Infinity"), Decimal("Infinity"), (8, 8))
 if best_move is not None:
     board = alphabeta.turncell(board, best_move, player)
