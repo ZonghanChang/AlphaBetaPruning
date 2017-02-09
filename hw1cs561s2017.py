@@ -41,10 +41,17 @@ class AlphaBetaPruning(object):
 
         if len(valid_pos) != 0:
             for pos in valid_pos:
-                copy = deepcopy(board)
-                self.turncell(copy, pos, player)
+                # copy = deepcopy(board)
+                # self.turncell(copy, pos, player)
                 self.appendlog(parent, depth - 1, v, alpha, beta)
-                temp = self.findmin(copy, depth + 1, max_depth, player, alpha, beta, pos)
+
+                board[pos[0]][pos[1]] = player
+                cells = self.getcells(board, pos, player)
+                self.turn_to(board, cells, player)
+                temp = self.findmin(board, depth + 1, max_depth, player, alpha, beta, pos)
+                self.turn_to(board, cells, opponent)
+                board[pos[0]][pos[1]] = blank
+
                 if temp > v:
                     v = temp
                     best_move = pos
@@ -80,10 +87,17 @@ class AlphaBetaPruning(object):
         v = Decimal("Infinity")
         if len(valid_pos) != 0:
             for pos in valid_pos:
-                copy = deepcopy(board)
-                self.turncell(copy, pos, opponent)
+                # copy = deepcopy(board)
+                # self.turncell(copy, pos, opponent)
                 self.appendlog(parent, depth - 1, v, alpha, beta)
-                temp, junk = self.findmax(copy, depth + 1, max_depth, player, alpha, beta, pos)
+
+                board[pos[0]][pos[1]] = opponent
+                cells = self.getcells(board, pos, opponent)
+                self.turn_to(board, cells, opponent)
+                temp, junk = self.findmax(board, depth + 1, max_depth, player, alpha, beta, pos)
+                self.turn_to(board, cells, player)
+                board[pos[0]][pos[1]] = blank
+                
                 v = min(v, temp)
                 if v <= alpha:
                     self.appendlog(parent, depth - 1, v, alpha, beta)
@@ -105,6 +119,30 @@ class AlphaBetaPruning(object):
             beta = min(beta, v)
         self.appendlog(parent, depth - 1, v, alpha, beta)
         return v
+
+    def turn_to(self, board, cells, turn_to):
+        for cell in cells:
+            board[cell[0]][cell[1]] = turn_to
+
+    def getcells(self, board, cur, turn_to):
+        ori = cur
+        cells = list()
+        for direction in directions:
+            path = list()
+            cur = ori
+            while True:
+                next = [direction[0] + cur[0], direction[1] + cur[1]]
+                if next[0] < 0 or next[1] < 0 or next[0] >= len(board) or next[1] >= len(board[0]):
+                    break
+                if board[next[0]][next[1]] == blank:
+                    break
+                if board[next[0]][next[1]] == turn_to:
+                    for cell in path:
+                        cells.append(cell)
+                    break
+                path.append(next)
+                cur = next
+        return cells
 
     def turncell(self, board, cur, turn_to):
         ori = cur
