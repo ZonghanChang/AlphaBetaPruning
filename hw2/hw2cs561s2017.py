@@ -113,31 +113,43 @@ def some_clause_false(clauses, model):
 
 
 def find_pure_symbol(symbols, clauses, model):
-    symbols_to_keep = deepcopy(symbols)
-    candidate_pure_positive_symbols = set()
-    candidate_pure_negtive_symbols = set()
-    for clause in clauses:
-        if model.determin_value(clause) is True:
-            continue
-        for p in clause.get_positive():
-            if p in symbols_to_keep:
-                candidate_pure_positive_symbols.add(p)
-        for n in clause.get_negtive():
-            if n in symbols_to_keep:
-                candidate_pure_negtive_symbols.add(n)
 
-    for s in symbols_to_keep:
-        if s in candidate_pure_positive_symbols and s in candidate_pure_negtive_symbols:
-            candidate_pure_positive_symbols.remove(s)
-            candidate_pure_negtive_symbols.remove(s)
-
-    if len(candidate_pure_positive_symbols) > 0:
-        return next(iter(candidate_pure_positive_symbols)), True
-
-    if len(candidate_pure_negtive_symbols) > 0:
-        return next(iter(candidate_pure_negtive_symbols)), False
-
+    for s in symbols:
+        found_pos, found_neg = False, False
+        for c in clauses:
+            if not found_pos and s in c.get_positive():
+                found_pos = True
+            if not found_neg and s in c.get_negtive():
+                found_neg = True
+        if found_pos != found_neg:
+            return s, found_pos
     return None, None
+
+    # symbols_to_keep = deepcopy(symbols)
+    # candidate_pure_positive_symbols = set()
+    # candidate_pure_negtive_symbols = set()
+    # for clause in clauses:
+    #     if model.determin_value(clause) is True:
+    #         continue
+    #     for p in clause.get_positive():
+    #         if p in symbols_to_keep:
+    #             candidate_pure_positive_symbols.add(p)
+    #     for n in clause.get_negtive():
+    #         if n in symbols_to_keep:
+    #             candidate_pure_negtive_symbols.add(n)
+    #
+    # for s in symbols_to_keep:
+    #     if s in candidate_pure_positive_symbols and s in candidate_pure_negtive_symbols:
+    #         candidate_pure_positive_symbols.remove(s)
+    #         candidate_pure_negtive_symbols.remove(s)
+    #
+    # if len(candidate_pure_positive_symbols) > 0:
+    #     return next(iter(candidate_pure_positive_symbols)), True
+    #
+    # if len(candidate_pure_negtive_symbols) > 0:
+    #     return next(iter(candidate_pure_negtive_symbols)), False
+
+    # return None, None
 
 def find_unit_clause(clauses, model):
     unassigned = None
@@ -179,7 +191,6 @@ def dpll(clauses, symbols, model):
     p = next(iter(copy))
     copy.remove(p)
     rest = copy
-    # model_copy = deepcopy(model)
     value_false = dpll(clauses, rest, model.union_inplace(p, False))
     value_true = dpll(clauses, rest, model.union_inplace(p, True))
     model.remove(p)
@@ -294,7 +305,7 @@ if dpll(sentence, symbols, model) is False:
     outfile.write('no')
 else:
     outfile.write('yes\n')
-    arrangement = walkSAT(sentence, 0.5, 10000, symbols_copy)
+    arrangement = walkSAT(sentence, 0.5, 100000, symbols_copy)
     for symbol in symbols_copy:
         if arrangement.assigments[symbol] is True:
             outfile.write(str(symbol[0]) + ' ' + str(symbol[1]) + '\n')
