@@ -20,6 +20,12 @@ class Clause:
     def get_negtive(self):
         return self.negtive_symbol
 
+    def is_positive(self, symbol):
+        return symbol in self.positive_symbol
+
+    def is_negtive(self, symbol):
+        return symbol in self.negtive_symbol
+
     def is_unit_clause(self):
         return len(self.positive_symbol) + len(self.negtive_symbol) == 1
 
@@ -36,6 +42,11 @@ class Model:
     def __init__(self, values):
         self.assigments = dict()
         self.assigments.update(values)
+
+    def get_value(self, symbol):
+        if symbol in self.assigments:
+            return self.assigments[symbol]
+        return None
 
     def union(self, symbol):
         m = Model(self.assigments)
@@ -89,9 +100,6 @@ class Model:
         return False
 
 
-
-
-
 def every_clause_true(clauses, model):
     return model.satisfies(clauses)
 
@@ -132,16 +140,22 @@ def find_pure_symbol(symbols, clauses, model):
     return None, None
 
 def find_unit_clause(clauses, model):
+    unassigned = None
+    result = None, None
     for clause in clauses:
-        p, value = unit_clause_assign(clauses, model)
-        if p:
-            return p, value
-    return None, None
-
-def unit_clause_assign(clauses, model):
-    p, value = None, None
-
-
+        if model.determin_value(clause) is None:
+            for symbol in clause.get_symbols():
+                value = model.get_value(symbol)
+                if value is None:
+                    if unassigned is None:
+                        unassigned = symbol
+                    else:
+                        unassigned = None
+                        break
+            if unassigned is not None:
+                positive = clause.is_positive(unassigned)
+                result = unassigned, positive
+    return result
 
 
 def dpll(clauses, symbols, model):
@@ -155,16 +169,22 @@ def dpll(clauses, symbols, model):
     if symbol is not None:
         symbols.remove(symbol)
         return dpll(clauses, symbols, model.union_inplace(symbol, value))
+    symbol = None
+    symbol, value = find_unit_clause(clauses, model)
+    if symbol is not None:
+        symbols.remove(symbol)
+        return dpll(clauses, symbols, model.union_inplace(symbol, value))
 
     copy = deepcopy(symbols)
     p = next(iter(copy))
     copy.remove(p)
     rest = copy
-    model_copy = deepcopy(model)
-    value_false = dpll(clauses, rest, model_copy.union_inplace(p, False))
-    value_true = dpll(clauses, rest, model_copy.union_inplace(p, True))
-    #model.remove(p)
+    # model_copy = deepcopy(model)
+    value_false = dpll(clauses, rest, model.union_inplace(p, False))
+    value_true = dpll(clauses, rest, model.union_inplace(p, True))
+    model.remove(p)
     return value_false or value_true
+
 
 def walkSAT(clauses, p, max_flips, symbols):
     model = random_assignment(symbols)
@@ -178,6 +198,7 @@ def walkSAT(clauses, p, max_flips, symbols):
         else:
             model = flip_symbols_maximizes_satisfied_clauses(clause, clauses, model)
     return None
+
 
 def flip_symbols_maximizes_satisfied_clauses(clause, clauses, model):
     symbols = clause.get_symbols()
@@ -194,12 +215,14 @@ def flip_symbols_maximizes_satisfied_clauses(clause, clauses, model):
             max_clause_satisfied = clause_satisfied
     return result
 
+
 def random_assignment(symbols):
     model = Model(dict())
 
     for symbol in symbols:
         model.union_inplace(symbol, bool(random.getrandbits(1)))
     return model
+
 
 def randomly_select_false_clause(clauses, model):
     count = 0
@@ -216,7 +239,7 @@ def random_select_symbol(clause):
     symbols = clause.get_symbols()
     return symbols[random.randrange(len(symbols))]
 
-file = open("input2.txt", "r")
+file = open("input.txt", "r")
 first_line = file.readline().strip('\r\n').split()
 guests = int(first_line[0])
 tables = int(first_line[1])
@@ -266,9 +289,12 @@ model = Model(dict())
 symbols_copy = list(symbols)
 symbols_copy.sort(key=lambda tup: tup[0])
 
-print dpll(sentence, symbols, model)
-result = walkSAT(sentence, 0.5, 10000, symbols_copy)
-
-for symbol in symbols_copy:
-    if result.assigments[symbol] is True:
-        print symbol[0], symbol[1]
+outfile = open('output.txt', 'w')
+if dpll(sentence, symbols, model) is False:
+    outfile.write('no')
+else:
+    outfile.write('yes\n')
+    arrangement = walkSAT(sentence, 0.5, 10000, symbols_copy)
+    for symbol in symbols_copy:
+        if arrangement.assigments[symbol] is True:
+            outfile.write(str(symbol[0]) + ' ' + str(symbol[1]) + '\n')
