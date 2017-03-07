@@ -125,31 +125,6 @@ def find_pure_symbol(symbols, clauses, model):
             return s, found_pos
     return None, None
 
-    # symbols_to_keep = deepcopy(symbols)
-    # candidate_pure_positive_symbols = set()
-    # candidate_pure_negtive_symbols = set()
-    # for clause in clauses:
-    #     if model.determin_value(clause) is True:
-    #         continue
-    #     for p in clause.get_positive():
-    #         if p in symbols_to_keep:
-    #             candidate_pure_positive_symbols.add(p)
-    #     for n in clause.get_negtive():
-    #         if n in symbols_to_keep:
-    #             candidate_pure_negtive_symbols.add(n)
-    #
-    # for s in symbols_to_keep:
-    #     if s in candidate_pure_positive_symbols and s in candidate_pure_negtive_symbols:
-    #         candidate_pure_positive_symbols.remove(s)
-    #         candidate_pure_negtive_symbols.remove(s)
-    #
-    # if len(candidate_pure_positive_symbols) > 0:
-    #     return next(iter(candidate_pure_positive_symbols)), True
-    #
-    # if len(candidate_pure_negtive_symbols) > 0:
-    #     return next(iter(candidate_pure_negtive_symbols)), False
-
-    # return None, None
 
 def find_unit_clause(clauses, model):
     unassigned = None
@@ -287,14 +262,20 @@ for line in file:
         a = int(tokens[0])
         b = int(tokens[1])
         for i in range(tables):
-            for j in range(tables):
-                if i != j:
-                    friend_clause = Clause()
-                    friend_clause.add_negtive((a, i + 1))
-                    friend_clause.add_negtive((b, j + 1))
-                    symbols.add((a, i + 1))
-                    symbols.add((b, j + 1))
-                    sentence.append(friend_clause)
+            symbols.add((a, i + 1))
+            symbols.add((b, i + 1))
+
+            friend_clause = Clause()
+            friend_clause.add_negtive((a, i + 1))
+            friend_clause.add_positive((b, i + 1))
+
+            sentence.append(friend_clause)
+
+            friend_clause2 = Clause()
+            friend_clause2.add_positive((a, i + 1))
+            friend_clause2.add_negtive((b, i + 1))
+
+            sentence.append(friend_clause2)
 
 model = Model(dict())
 symbols_copy = list(symbols)
