@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import re
+from decimal import Decimal
 class Utility:
     def __init__(self):
         self.variables = list()
@@ -133,9 +134,8 @@ def processequery(query):
         processvariable(tokens[1], observedvariables, list())
     return observedvariables
 
-def calEU(utility, query, bn):
+def calEU(utility, observedvariables, bn):
     queryvariables = dict()
-    observedvariables = processequery(query)
     for variable in utility.variables:
         queryvariables[variable] = True
     pquery, distribution = enumeration_ask(utility.variables, queryvariables, observedvariables, bn)
@@ -147,17 +147,66 @@ def calEU(utility, query, bn):
         eu += utility.getutility(k) * distribution[k] * 1.0 / sum
     return eu
 
+def processdvariable(str):
+    variablelist = list()
+    tokens = str.strip().split(",")
+    for token in tokens:
+        variablelist.append(token.strip())
+    return variablelist
+
+def generatepair(l):
+    pairs = dict()
+    for i in l:
+        pairs[i] = True
+    return pairs
+
+def processmquery(query):
+    observedvariables = dict()
+    if query.find("|") == -1:
+        decisionvariables = processdvariable(query)
+        queryvariables = generatepair(decisionvariables)
+    else:
+        tokens = query.split("|")
+        decisionvariables = processdvariable(tokens[0])
+        queryvariables = generatepair(decisionvariables)
+        processvariable(tokens[1], observedvariables, list())
+    return decisionvariables, queryvariables, observedvariables
+
+def calMEU(utility, query, bn):
+    decisionvariables, queryvariables, observedvariables = processmquery(query)
+    allconditions = list()
+    generateallconditions(allconditions, dict(), list(queryvariables), 0)
+    maxcondition = None
+    maxEU = Decimal("-Infinity")
+    for condition in allconditions:
+        observedvariables.update(condition)
+        eu = calEU(utility, observedvariables, bn)
+        if eu > maxEU:
+            maxEU, maxcondition = eu, condition
+    return maxEU, maxcondition
+
 def main():
+    out = open("output.txt", "w")
     querys, bn, utility = readfile()
     for query in querys:
         if query[0] == "P":
             q = calP(query[2:-1], bn)
-            print '%.2f' %q
+            s = '%.2f\n' %q
         elif query[0] == "E":
-            u = calEU(utility, query[3:-1], bn)
-            print int(round(u))
+            observedvariables = processequery(query[3:-1])
+            eu = calEU(utility, observedvariables, bn)
+            s = str(int(round(eu))) + "\n"
         elif query[0] == "M":
-            pass
+            decisionvariables, queryvariables, observedvariables  = processmquery(query[4:-1])
+            meu, condition = calMEU(utility, query[4:-1], bn)
+            s = ""
+            for v in decisionvariables:
+                if condition[v]:
+                    s += "+ "
+                else:
+                    s += "- "
+            s += str(int(round(meu))) + "\n"
+        out.write(s)
 
 def generateallconditions(result, temp, queryvariables, pos):
     if len(temp) == len(queryvariables):
@@ -169,6 +218,7 @@ def generateallconditions(result, temp, queryvariables, pos):
     temp[queryvariables[pos]] = False
     generateallconditions(result, temp, queryvariables, pos + 1)
     del temp[queryvariables[pos]]
+
 def dicttotuple(order, dic):
     res = list()
     for item in order:
@@ -182,7 +232,7 @@ def enumeration_ask(queryvariablesorder, queryvariables, observedvariables, bn):
     allvaribles = list(bn.getvariables())
     allvaribles.reverse()
     allconditions = list()
-    generateallconditions(allconditions, dict(), list(queryvariables), 0)
+    generateallconditions(allconditions, dict(), queryvariablesorder, 0)
 
     for condition in allconditions:
         o1 = dict(observedvariables)
@@ -269,7 +319,7 @@ def readfile():
                 if tokens[i] == "+":
                     positivelist.append(utilityparent[i - 1])
             utility.addutility(tuple(positivelist), u)
-
+    file.close()
     return querys, graph, utility
 
 if __name__ == '__main__':
