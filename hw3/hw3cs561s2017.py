@@ -96,32 +96,37 @@ class UtilityNode:
 class DecisionNode:
     pass
 
-def processvariable(str, dic):
+def processvariable(str, dic, queryvariablesorder):
     tokens = str.split(",")
     for token in tokens:
         pair = token.split("=")
         variable = pair[0].strip()
         value = pair[1].strip()
+        queryvariablesorder.append(variable)
         dic[variable] = True if value == "+" else False
 
 def processquery(query):
+    queryvariablesorder = list()
     queryvariables = dict()
     observedvariables = dict()
     if query.find("|") == -1:
-        processvariable(query, queryvariables)
+        processvariable(query, queryvariables, queryvariablesorder)
     else:
         tokens = query.split("|")
-        processvariable(tokens[0], queryvariables)
-        processvariable(tokens[1], observedvariables)
-    return queryvariables, observedvariables
+        processvariable(tokens[0], queryvariables, queryvariablesorder)
+        processvariable(tokens[1], observedvariables, list())
+    return queryvariablesorder, queryvariables, observedvariables
 
 def calP(query, bn):
-    queryvariables, observedvariables = processquery(query)
-    q = enumeration_ask(queryvariables, observedvariables, bn)
-    return q
+    queryvariablesorder, queryvariables, observedvariables = processquery(query)
+    pquery, distribution = enumeration_ask(queryvariablesorder, queryvariables, observedvariables, bn)
+    sum = 0
+    for k, v in distribution.items():
+        sum += v
+    return pquery * 1.0 / sum
 
 def calEU(utility, query):
-
+    pass
 
 def main():
     querys, bn, utility = readfile()
@@ -145,10 +150,16 @@ def generateallconditions(result, temp, queryvariables, pos):
     temp[queryvariables[pos]] = False
     generateallconditions(result, temp, queryvariables, pos + 1)
     del temp[queryvariables[pos]]
+def dicttotuple(order, dic):
+    res = list()
+    for item in order:
+        if dic[item]:
+            res.append(item)
+    return tuple(res)
 
-def enumeration_ask(queryvariables, observedvariables, bn):
+def enumeration_ask(queryvariablesorder, queryvariables, observedvariables, bn):
     pquery = 0
-    distribution = list()
+    distribution = dict()
     allvaribles = list(bn.getvariables())
     allvaribles.reverse()
     allconditions = list()
@@ -161,8 +172,9 @@ def enumeration_ask(queryvariables, observedvariables, bn):
         p = enumeration_all(allvaribles, o1, bn)
         if cmp(condition, queryvariables) == 0:
             pquery = p
-        distribution.append(p)
-    return pquery * (1.0 / sum(distribution))
+        t = dicttotuple(queryvariablesorder, condition)
+        distribution[t] = p
+    return pquery, distribution
 
 def enumeration_all(vars, observedvariables, bn):
     if len(vars) == 0:
