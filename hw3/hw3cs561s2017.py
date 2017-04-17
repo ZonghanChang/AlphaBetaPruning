@@ -1,6 +1,15 @@
 #!/usr/bin/python
 import re
+class Utility:
+    def __init__(self):
+        self.variables = list()
+        self.utility = dict()
 
+    def storevariables(self, v):
+        self.variables = v
+
+    def addutility(self, name, u):
+        self.utility[name] = u
 class Graph:
     def __init__(self):
         self.nodes = dict()
@@ -95,7 +104,7 @@ def processvariable(str, dic):
         value = pair[1].strip()
         dic[variable] = True if value == "+" else False
 
-def prcessprobabilityquery(query):
+def processquery(query):
     queryvariables = dict()
     observedvariables = dict()
     if query.find("|") == -1:
@@ -106,15 +115,23 @@ def prcessprobabilityquery(query):
         processvariable(tokens[1], observedvariables)
     return queryvariables, observedvariables
 
+def calP(query, bn):
+    queryvariables, observedvariables = processquery(query)
+    q = enumeration_ask(queryvariables, observedvariables, bn)
+    return q
+
+def calEU(utility, query):
+
+
 def main():
-    querys, bn = readfile()
+    querys, bn, utility = readfile()
     for query in querys:
         if query[0] == "P":
-            queryvariables, observedvariables = prcessprobabilityquery(query[2:-1])
-            q = enumeration_ask(queryvariables, observedvariables, bn)
+            q = calP(query[2:-1], bn)
             print '%.2f' %q
         elif query[0] == "E":
-            pass
+            u = calEU(utility, query[3:-1])
+            print u
         elif query[0] == "M":
             pass
 
@@ -179,6 +196,7 @@ def enumeration_all(vars, observedvariables, bn):
 def readfile():
     file = open("input.txt", "r")
     graph = Graph()
+    utility = Utility()
     querys = list()
     while True:
         line = file.readline().strip("\n\r")
@@ -208,14 +226,20 @@ def readfile():
         utilityparent = line.split("|")[1]
         p = re.compile(r' +')
         utilityparent = p.split(utilityparent.strip())
-
+        utility.storevariables(utilityparent)
         while True:
             line = file.readline().strip("\n\r")
             if not line:
                 break
-            tokens = p.split(line.strip())
+            tokens = line.strip().split(" ")
+            u = tokens[0]
+            positivelist = list()
+            for i in range(1, len(tokens)):
+                if tokens[i] == "+":
+                    positivelist.append(utilityparent[i - 1])
+            utility.addutility(tuple(positivelist), u)
 
-    return querys, graph
+    return querys, graph, utility
 
 if __name__ == '__main__':
     main()
