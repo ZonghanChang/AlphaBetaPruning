@@ -10,6 +10,10 @@ class Utility:
 
     def addutility(self, name, u):
         self.utility[name] = u
+
+    def getutility(self, name):
+        return float(self.utility[name])
+
 class Graph:
     def __init__(self):
         self.nodes = dict()
@@ -90,12 +94,6 @@ class Node:
         return name in self.parents
 
 
-class UtilityNode:
-    pass
-
-class DecisionNode:
-    pass
-
 def processvariable(str, dic, queryvariablesorder):
     tokens = str.split(",")
     for token in tokens:
@@ -105,7 +103,7 @@ def processvariable(str, dic, queryvariablesorder):
         queryvariablesorder.append(variable)
         dic[variable] = True if value == "+" else False
 
-def processquery(query):
+def processpquery(query):
     queryvariablesorder = list()
     queryvariables = dict()
     observedvariables = dict()
@@ -118,15 +116,36 @@ def processquery(query):
     return queryvariablesorder, queryvariables, observedvariables
 
 def calP(query, bn):
-    queryvariablesorder, queryvariables, observedvariables = processquery(query)
+    queryvariablesorder, queryvariables, observedvariables = processpquery(query)
     pquery, distribution = enumeration_ask(queryvariablesorder, queryvariables, observedvariables, bn)
     sum = 0
     for k, v in distribution.items():
         sum += v
     return pquery * 1.0 / sum
 
-def calEU(utility, query):
-    pass
+def processequery(query):
+    observedvariables = dict()
+    if query.find("|") == -1:
+        processvariable(query, observedvariables, list())
+    else:
+        tokens = query.split("|")
+        processvariable(tokens[0], observedvariables, list())
+        processvariable(tokens[1], observedvariables, list())
+    return observedvariables
+
+def calEU(utility, query, bn):
+    queryvariables = dict()
+    observedvariables = processequery(query)
+    for variable in utility.variables:
+        queryvariables[variable] = True
+    pquery, distribution = enumeration_ask(utility.variables, queryvariables, observedvariables, bn)
+    sum = 0
+    eu = 0
+    for k, v in distribution.items():
+        sum += v
+    for k, v in distribution.items():
+        eu += utility.getutility(k) * distribution[k] * 1.0 / sum
+    return eu
 
 def main():
     querys, bn, utility = readfile()
@@ -135,8 +154,8 @@ def main():
             q = calP(query[2:-1], bn)
             print '%.2f' %q
         elif query[0] == "E":
-            u = calEU(utility, query[3:-1])
-            print u
+            u = calEU(utility, query[3:-1], bn)
+            print int(round(u))
         elif query[0] == "M":
             pass
 
