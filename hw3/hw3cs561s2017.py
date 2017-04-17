@@ -1,6 +1,8 @@
 #!/usr/bin/python
 import re
 from decimal import Decimal
+import numpy
+
 class Utility:
     def __init__(self):
         self.variables = list()
@@ -137,14 +139,19 @@ def processequery(query):
 def calEU(utility, observedvariables, bn):
     queryvariables = dict()
     for variable in utility.variables:
-        queryvariables[variable] = True
-    pquery, distribution = enumeration_ask(utility.variables, queryvariables, observedvariables, bn)
+        if variable not in observedvariables:
+            queryvariables[variable] = True
+    pquery, distribution = enumeration_ask(list(queryvariables), queryvariables, observedvariables, bn)
     sum = 0
     eu = 0
     for k, v in distribution.items():
         sum += v
     for k, v in distribution.items():
-        eu += utility.getutility(k) * distribution[k] * 1.0 / sum
+        t = list()
+        for variable in utility.variables:
+            if variable in k or variable in observedvariables and observedvariables[variable]:
+                t.append(variable)
+        eu += utility.getutility(tuple(t)) * distribution[k] * 1.0 / sum
     return eu
 
 def processdvariable(str):
